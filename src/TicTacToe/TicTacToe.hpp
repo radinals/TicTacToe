@@ -14,6 +14,9 @@ private:
     static constexpr int m_cells_cols = 3;
 
     enum MarkType { NO_MARK, X_MARK, O_MARK };
+    enum Players { NONE, HUMAN, CPU };
+
+    Players m_turn = HUMAN;
 
     int     m_cells[m_cells_cols][m_cells_cols];
     Size_t  m_cell_size;
@@ -23,8 +26,17 @@ private:
     int     m_grid_spacing = 4;
     Size_t  m_window_size;
     Rect_t  m_mark_pos;
+    bool    m_mark = false;
+    Players m_player_won = NONE;
+    size_t m_cells_filled = 0;
+    MarkType m_player_mark = X_MARK;
+    MarkType m_cpu_mark = O_MARK;
 
 private:
+    void reset();
+    void fillCells();
+    Players getWinner();
+    int randomRange(int,int);
     void calcSizes();
     void render() override;
     void onKeyPressEvent(const SDL_Keysym &) override;

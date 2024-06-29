@@ -1,17 +1,15 @@
 #include "TicTacToe.hpp"
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_timer.h>
 #include <cstring>
 #include <iostream>
+#include <random>
 
 TicTacToe::TicTacToe() : Game_t()
 {
     setBackgroundColor(Color_t("#FFFFFF"));
+    fillCells();
 
-    for (size_t i = 0; i < m_cells_cols; i++) {
-        memset(m_cells, MarkType::NO_MARK, m_cells_cols);
-    }
-
-    m_cells[0][0] = MarkType::X_MARK;
 }
 
 void
@@ -29,37 +27,39 @@ TicTacToe::render()
         for (size_t j = 0; j < m_cells_cols; j++) {
             m_renderer->setColor(Color_t("#000000"));
             m_renderer->drawFillRect(pos);
-            // std::cout << "POS: " << pos.x << ' ' << pos.y << '\n';
-            // std::cout << "SEL: " << m_selected.x << ' ' << m_selected.y <<
-            // '\n';
-            m_renderer->drawRect(Point_t(m_selected.getTopLeft().x + 2,
-                                         m_selected.getTopLeft().y + 2),
-                                 Size_t(m_selected.w - 2, m_selected.h - 4));
-            if (pos == m_mark_pos) {
-                m_cells[i][j] = (m_cells[i][j] == NO_MARK)  ? MarkType::X_MARK
-                                : (m_cells[i][j] == X_MARK) ? MarkType::O_MARK
-                                                            : MarkType::NO_MARK;
-                m_mark_pos.x  = -1;
-                m_mark_pos.y  = -1;
+            if (m_player_won != NONE || m_cells_filled == (m_cells_cols * m_cells_cols)) {
+                SDL_Delay(1000);
+                reset();
+            } else if (pos == m_mark_pos && m_mark && m_turn == HUMAN && m_player_won == NONE) {
+                if (m_cells[i][j] == NO_MARK) {
+                    m_cells[i][j] = m_player_mark;
+                    m_turn = CPU;
+                    m_player_won = getWinner();
+                    m_cells_filled++;
+                }
+                m_mark        = false;
+            } else if (m_turn == CPU && m_player_won == NONE ){
+                int x = 0, y = 0;
+                do {
+                    x = randomRange(0, m_cells_cols);
+                    y = randomRange(0, m_cells_cols);
+                } while(m_cells[y][x] != NO_MARK);
+                m_cells[y][x] = m_cpu_mark;
+                m_turn = HUMAN;
+                m_cells_filled ++;
+                m_player_won = getWinner();
             }
             if (m_cells[i][j] == MarkType::O_MARK) {
                 m_renderer->setColor(Color_t("#FFF000"));
-                // m_renderer->drawLine(pos.getTopLeft(), pos.getBottomRight());
-                // m_renderer->drawLine(pos.getTopRight(), pos.getBottomLeft());
                 m_renderer->drawFillRect(pos);
             } else if (m_cells[i][j] == MarkType::X_MARK) {
                 Rect_t r(pos.x, pos.y, m_cell_size.w, m_cell_size.h);
                 m_renderer->setColor(Color_t("#FF0000"));
-                // m_renderer->drawLine(pos.getTopLeft(), pos.getBottomRight());
-                // m_renderer->drawLine(pos.getTopRight(), pos.getBottomLeft());
                 m_renderer->drawFillRect(pos);
             }
 
             m_renderer->setColor(Color_t("#FD0DF0"));
-            m_renderer->drawRect(m_selected);
-            m_renderer->drawRect(Point_t(m_selected.getTopLeft().x + 1,
-                                         m_selected.getTopLeft().y + 1),
-                                 Size_t(m_selected.w - 2, m_selected.h - 2));
+            m_renderer->drawFillRect(m_selected);
 
             pos.x += (m_cell_size.w + m_grid_spacing);
         }
@@ -77,16 +77,18 @@ TicTacToe::calcSizes()
 {
     m_window_size = m_window->getSize();
 
-    int w = (m_window_size.w / float(m_cells_cols)) - m_grid_spacing * 2;
-    int h = (m_window_size.h / float(m_cells_cols)) - m_grid_spacing * 2;
+    int w = int(float(m_window_size.w) / float(m_cells_cols))
+            - m_grid_spacing * 2;
+    int h = int(float(m_window_size.h) / float(m_cells_cols))
+            - m_grid_spacing * 2;
 
     m_cell_size = Size_t(w, h);
 
-    m_grid_start.x = int((m_window_size.w / 2.0F)
-                         - ((m_cell_size.w * m_cells_cols) / 2.0F))
+    m_grid_start.x = int((float(m_window_size.w) / 2.0F)
+                         - (float(m_cell_size.w * m_cells_cols) / 2.0F))
                      - m_grid_spacing;
-    m_grid_start.y = int((m_window_size.h / 2.0F)
-                         - ((m_cell_size.h * m_cells_cols) / 2.0F))
+    m_grid_start.y = int((float(m_window_size.h) / 2.0F)
+                         - (float(m_cell_size.h * m_cells_cols) / 2.0F))
                      - m_grid_spacing;
     m_grid_area.h = m_cell_size.h * m_cells_cols;
     m_grid_area.w = m_cell_size.w * m_cells_cols;
@@ -130,10 +132,93 @@ TicTacToe::onKeyPressEvent(const SDL_Keysym &key)
                 m_selected.x = new_pos;
             }
             break;
-        case SDLK_m:
+        case SDLK_SPACE:
             m_mark_pos = m_selected;
+            m_mark     = true;
             break;
+        case SDLK_r:
+            reset();
+        break;
         default:
             break;
     }
+}
+
+TicTacToe::Players TicTacToe::getWinner() {
+    if (m_cells[0][2] == m_player_mark && m_cells[1][1] == m_player_mark && m_cells[2][0] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[0][0] == m_player_mark && m_cells[1][1] == m_player_mark && m_cells[2][2] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[0][0] == m_player_mark && m_cells[0][1] == m_player_mark && m_cells[0][2] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[1][0] == m_player_mark && m_cells[1][1] == m_player_mark && m_cells[1][2] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[2][0] == m_player_mark && m_cells[2][1] == m_player_mark && m_cells[2][2] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[0][0] == m_player_mark && m_cells[1][0] == m_player_mark && m_cells[2][0] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[0][1] == m_player_mark && m_cells[1][1] == m_player_mark && m_cells[2][1] == m_player_mark) {
+        return Players::HUMAN;
+    }
+    if (m_cells[0][2] == m_player_mark && m_cells[1][2] == m_player_mark && m_cells[2][2] == m_player_mark) {
+        return Players::HUMAN;
+    }
+
+    if (m_cells[0][2] == m_cpu_mark && m_cells[1][1] == m_cpu_mark && m_cells[2][0] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[0][0] == m_cpu_mark && m_cells[1][1] == m_cpu_mark && m_cells[2][2] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[0][0] == m_cpu_mark && m_cells[0][1] == m_cpu_mark && m_cells[0][2] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[1][0] == m_cpu_mark && m_cells[1][1] == m_cpu_mark && m_cells[1][2] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[2][0] == m_cpu_mark && m_cells[2][1] == m_cpu_mark && m_cells[2][2] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[0][0] == m_cpu_mark && m_cells[1][0] == m_cpu_mark && m_cells[2][0] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[0][1] == m_cpu_mark && m_cells[1][1] == m_cpu_mark && m_cells[2][1] == m_cpu_mark) {
+        return Players::CPU;
+    }
+    if (m_cells[0][2] == m_cpu_mark && m_cells[1][2] == m_cpu_mark && m_cells[2][2] == m_cpu_mark) {
+        return Players::CPU;
+    }
+
+    return NONE;
+}
+
+void TicTacToe::reset() {
+    fillCells();
+    m_player_won = NONE;
+    m_turn = HUMAN;
+    m_cells_filled = 0;
+}
+
+
+void TicTacToe::fillCells() {
+    for (size_t i = 0; i < m_cells_cols; i++) {
+        for (size_t j = 0; j < m_cells_cols; j++) {
+            m_cells[i][j] = NO_MARK;
+        }
+    }
+}
+
+int TicTacToe::randomRange(int min,int max) {
+    std::random_device rd; // obtain a random number from hardware
+    std::mt19937 gen(rd()); // seed the generator
+    std::uniform_int_distribution<> distr(min, max); // define the range
+
+    return distr(gen);
+
 }
