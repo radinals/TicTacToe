@@ -10,6 +10,11 @@ public:
     Rect_t() : SDL_Rect { 0, 0, 0, 0 } { }
     Rect_t(int x, int y, int w, int h) : SDL_Rect { x, y, w, h } { }
 
+    bool operator==(const Rect_t& other)
+    {
+        return x == other.x && y == other.y && w == other.w && h == other.h;
+    }
+
     Point_t getCenter() const;
     Point_t getTopLeft() const;
     Point_t getTopRight() const;

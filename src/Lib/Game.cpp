@@ -77,25 +77,25 @@ void
 Game_t::eventDispatch(const SDL_Event *const event)
 {
     switch (event->type) {
-        // case SDL_KEYDOWN:
-        //     onKeyPressEvent(event->key.keysym);
-        //     break;
-        // case SDL_KEYUP:
-        //     onKeyReleaseEvent(event->key.keysym);
-        //     break;
+        case SDL_KEYDOWN:
+            onKeyPressEvent(event->key.keysym);
+            break;
+        case SDL_KEYUP:
+            onKeyReleaseEvent(event->key.keysym);
+            break;
         case SDL_QUIT:
             onQuitEvent();
             break;
-        // case SDL_WINDOWEVENT:
-        //     switch (event->window.event) {
-        //         case SDL_WINDOWEVENT_RESIZED:
-        //             onWindowResize(
-        //                 Size_t(event.window.data1, event.window.data2));
-        //             break;
-        //         default:
-        //             break;
-        //     }
-        //     break;
+        case SDL_WINDOWEVENT:
+            switch (event->window.event) {
+                case SDL_WINDOWEVENT_RESIZED:
+                    onWindowResize(
+                        Size_t(event->window.data1, event->window.data2));
+                    break;
+                default:
+                    break;
+            }
+            break;
         // case SDL_DISPLAYEVENT:
         //     break;
         default:
